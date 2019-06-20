@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta name="description" content="Rivets Exercises" />
+  <script src="js/jquery.js"></script>
+  <script src="js/sinon.js"></script>
+  <script src="js/fakeserver.js"></script>
+  <script src="js/underscore.js"></script>
+  <script src="js/backbone.js"></script>
+  <script src="js/rivets.js"></script>
+  <meta charset=utf-8 />
+  <title>Rivets Exercises</title>
+  <style>
+    div {
+      margin: 40px 0 0 0;
+    }
+
+    div span {
+      color: blue;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    td,
+    th {
+      border: 1px solid;
+      padding: 4px;
+    }
+
+    .styleddate {
+      color: red;
+    }
+  </style>
+</head>
+
+<body>
+  <pre>
+    /**
+    *    Backbone.View exercises
+    *
+    */
+
+    // ******************************************
+    // Explanation
+    //
+    // - You are given the following skeleton code
+    //   - A model called 'Person',
+    //   - A collection called 'PersonCollection'.
+    //      - This collection is for Person models.
+    //      - This collection points to /persons.
+    //   - A PersonTable view
+    //      - This view contains a template 
+    //        (string)
+    //      - This view contains a noop render 
+    //        function.
+    // ******************************************
+    // ******************************************
+    // Exercise 1
+    //
+    // Implement a render function that does the 
+    // following:
+    // - It must fill the inner $el with the 
+    //   contents of the template
+    // - It must bind the inner $el to a context
+    //   containing the previously created 
+    //   backbone collection.
+    // - It must call fetch on the collection.
+    // - It must return the view instance
+    // In addition: 
+    // - Create two instances of PersonTable
+    //   (called view1 and view2).
+    // - Use JQuery to query 'divOne' and 'divTwo',
+    //   after which you change their contents with
+    //   the $el of each rendered view, thus
+    //   creating two rendered tables in the output.
+    // ******************************************
+
+
+    // ******************************************
+    // Exercise 2
+    //
+    // - Implement an event handler for clicking
+    //   the 'add' button.
+    // - In the event handler
+    //    - Create a new instance of Person 
+    //    - Set the data from the inputs inside
+    //    - Add it to the collection.
+    //    - Call save to syncrhonize it with the 
+    //      backend
+    // - Verify that adding an item in one table
+    //   has no effect whatsoever on the second and
+    //   vice versa until refresh is clicked.
+    //
+    //   The aim of this exercise is to proof that
+    //   you can handle Backbone/JQuery in such a
+    //   way that you only touch the DOM of the
+    //   widget you are clicking in.
+    // ******************************************
+
+
+    // ******************************************
+    // Exercise 3
+    //
+    // We are still using JQuery to read data
+    // from the view. In this exercise, we will
+    // create another Backbone model synchronized
+    // with input data from the view.
+    // - Override the view's constructor
+    // - Inside the constructor, initialize a new
+    //   Backbone model associated with that view
+    //   instance.
+    // - Use rivets to bind the values of the 
+    //   input fields to this new view model. (
+    //   Don't forget to add the new view model
+    //   to the binding context).
+    // - Change the 'add' handler so that it takes
+    //   its values from the view model instead
+    //   of finding the values using JQuery.
+    // ******************************************
+
+    // ******************************************
+    // Exercise 4
+    //
+    // - Implement an event handler for clicking
+    //   the 'delete' button.
+    // - In the event handler, retrieve the value
+    //   of the 'data-person-id' attribute of the 
+    //   button.
+    // - Find the correct backbone model in the
+    //   collection. Note that the ID is NOT 
+    //   neccessarily the same as the index!
+    // - Remove it from the collection and destroy
+    //   it
+    // - Verify that removing an item from one table
+    //   also removes it from the second.
+    // ******************************************
+  </pre>
+  <div id="divOne"></div>
+  <div id="divTwo"></div>
+
+
+  <script type="text/javascript">
+    rivets.configure({
+      prefix: 'rv'
+    });
+
+    // Rivets.js to backbone glue code
+    // source: https://github.com/mikeric/rivets/issues/57
+
+    rivets.configure({
+      adapter: {
+        subscribe: function (obj, keypath, callback) {
+          if (obj instanceof Backbone.Collection) {
+            obj.on('add remove reset', function () {
+              callback(obj[keypath]);
+            });
+          } else {
+            callback.wrapped = function (model, value) {
+              return callback(value);
+            };
+            return obj.on("change:" + keypath, callback.wrapped);
+          }
+        },
+        unsubscribe: function (obj, keypath, callback) {
+          if (obj instanceof Backbone.Collection) {
+            obj.off('add remove reset', function () {
+              callback(obj[keypath]);
+            });
+          } else {
+            return obj.off("change:" + keypath, callback.wrapped);
+          }
+        },
+        read: function (obj, keypath) {
+          if (obj instanceof Backbone.Collection) {
+            return obj.models;
+          } else {
+            return obj.get(keypath);
+          }
+        },
+        publish: function (obj, keypath, value) {
+          if (obj instanceof Backbone.Collection) {
+            obj.models = value;
+          } else {
+            obj.set(keypath, value);
+          }
+        }
+      }
+    });
+    /**
+    *    Backbone.View exercises
+    *
+    */
+
+    // ******************************************
+    // Explanation
+    //
+    // - You are given the following skeleton code
+    //   - A model called 'Person',
+    //   - A collection called 'PersonCollection'.
+    //      - This collection is for Person models.
+    //      - This collection points to /persons.
+    //   - A PersonTable view
+    //      - This view contains a template 
+    //        (string)
+    //      - This view contains a noop render 
+    //        function.
+    // ******************************************
+    var Person = Backbone.Model.extend({
+      idAttribute: 'id'
+    });
+    var PersonCollection = Backbone.Collection.extend({
+      model: Person,
+      url: '/persons'
+    });
+
+    var PersonTable = Backbone.View.extend({
+      template: [
+        '<table>',
+        '<tr>',
+        '<th>ID</th>',
+        '<th>First Name</th>',
+        '<th>Last Name</th>',
+        '<th>',
+        '<button class="btnRefresh btn btn-default"> refresh',
+        '</button>',
+        '</th>',
+        '</tr>',
+        '<tr data-rv-each-person="persons">',
+        '<td data-rv-text="person.id">{person.id}</td>',
+        '<td data-rv-text="person.firstName">{person.firstName}</td>',
+        '<td data-rv-text="person.lastName">{person.lastName}</td>',
+        '<td>',
+        '<button data-rv-data-person-id="person.id" class="delButton btn btn-default"> delete',
+        '</button>',
+        '</td>',
+        '</tr>',
+        '<tr>',
+        '<td></td>',
+        '<td>',
+        '<input class="firstName form-control" data-rv-value="viewModel.firstName" placeholder="Enter first name">',
+        '</td>',
+        '<td>',
+        '<input class="lastName form-control" data-rv-value="viewModel.lastName" placeholder="Enter last name">',
+        '</td>',
+        '<td>',
+        '<button class="addButton btn btn-default"> Add',
+        '</button>',
+        '</td>',
+        '</tr>',
+        '</table>'
+      ].join(''),
+
+      initialize: function () {
+        this.collection = new PersonCollection();
+        this.viewModel = new Backbone.Model();
+      },
+
+      events: {
+        'click .btnRefresh': 'refresh',
+        'click .addButton': 'addHandler',
+        'click .delButton': 'delHandler'
+      },
+
+      addHandler: function () {
+        var p = new Person();
+        p.set('firstName', this.viewModel.get('firstName'));
+        p.set('lastName', this.viewModel.get('lastName'));
+        this.collection.add(p);
+        p.save();
+        this.viewModel.clear();
+      },
+
+      delHandler: function (event) {
+        var id = $(event.target).attr('data-person-id');
+        id = parseInt(id, 10);
+        var person = this.collection.findWhere({ id: id });
+        person.destroy();
+      },
+
+      refresh: function () {
+        this.collection.fetch();
+      },
+
+      render: function () {
+        this.$el.html(this.template);
+        rivets.bind(this.$el, {
+          persons: this.collection,
+          viewModel: this.viewModel
+        });
+        this.refresh();
+        return this;
+      }
+    });
+
+
+    $('#divOne').append(new PersonTable().render().$el);
+    $('#divTwo').append(new PersonTable().render().$el);
+
+  // ******************************************
+  // Exercise 1
+  //
+  // Implement a render function that does the 
+  // following:
+  // - It must fill the inner $el with the 
+  //   contents of the template
+  // - It must bind the inner $el to a context
+  //   containing the previously created 
+  //   backbone collection.
+  // - It must call fetch on the collection.
+  // - It must return the view instance
+  // In addition: 
+  // - Create two instances of PersonTable
+  //   (called view1 and view2).
+  // - Use JQuery to query 'divOne' and 'divTwo',
+  //   after which you change their contents with
+  //   the $el of each rendered view, thus
+  //   creating two rendered tables in the output.
+  // ******************************************
+
+
+  // ******************************************
+  // Exercise 2
+  //
+  // - Implement an event handler for clicking
+  //   the 'add' button.
+  // - In the event handler
+  //    - Create a new instance of Person 
+  //    - Set the data from the inputs inside
+  //    - Add it to the collection.
+  //    - Call save to syncrhonize it with the 
+  //      backend
+  // - Verify that adding an item in one table
+  //   has no effect whatsoever on the second and
+  //   vice versa until refresh is clicked.
+  //
+  //   The aim of this exercise is to prove that
+  //   you can handle Backbone/JQuery in such a
+  //   way that you only touch the DOM of the
+  //   widget you are clicking in.
+  // ******************************************
+
+
+  // ******************************************
+  // Exercise 3
+  //
+  // We are still using JQuery to read data
+  // from the view. In this exercise, we will
+  // create another Backbone model synchronized
+  // with input data from the view.
+  // - Override the view's constructor
+  // - Inside the constructor, initialize a new
+  //   Backbone model associated with that view
+  //   instance.
+  // - Use rivets to bind the values of the 
+  //   input fields to this new view model. (
+  //   Don't forget to add the new view model
+  //   to the binding context).
+  // - Change the 'add' handler so that it takes
+  //   its values from the view model instead
+  //   of finding the values using JQuery.
+  // ******************************************
+
+  // ******************************************
+  // Exercise 4
+  //
+  // - Implement an event handler for clicking
+  //   the 'delete' button.
+  // - In the event handler, retrieve the value
+  //   of the 'data-person-id' attribute of the 
+  //   button.
+  // - Find the correct backbone model in the
+  //   collection. Note that the ID is NOT 
+  //   neccessarily the same as the index!
+  // - Remove it from the collection and destroy
+  //   it
+  // - Verify that removing an item from one table
+  //   also removes it from the second.
+  // ******************************************
+
+
+
+
+
+  </script>
+</body>
+
+</html>
